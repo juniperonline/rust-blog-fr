@@ -2,29 +2,29 @@
 
 _19 May 2020 · #rust · #lifetimes_
 
-**Table of Contents**
+**Table des matières**
 - [Intro](#intro)
-- [The Misconceptions](#the-misconceptions)
-    - [1) `T` only contains owned types](#1-t-only-contains-owned-types)
-    - [2) if `T: 'static` then `T` must be valid for the entire program](#2-if-t-static-then-t-must-be-valid-for-the-entire-program)
-    - [3) `&'a T` and `T: 'a` are the same thing](#3-a-t-and-t-a-are-the-same-thing)
-    - [4) my code isn't generic and doesn't have lifetimes](#4-my-code-isnt-generic-and-doesnt-have-lifetimes)
-    - [5) if it compiles then my lifetime annotations are correct](#5-if-it-compiles-then-my-lifetime-annotations-are-correct)
-    - [6) boxed trait objects don't have lifetimes](#6-boxed-trait-objects-dont-have-lifetimes)
-    - [7) compiler error messages will tell me how to fix my program](#7-compiler-error-messages-will-tell-me-how-to-fix-my-program)
-    - [8) lifetimes can grow and shrink at run-time](#8-lifetimes-can-grow-and-shrink-at-run-time)
-    - [9) downgrading mut refs to shared refs is safe](#9-downgrading-mut-refs-to-shared-refs-is-safe)
-    - [10) closures follow the same lifetime elision rules as functions](#10-closures-follow-the-same-lifetime-elision-rules-as-functions)
+- [Les Idées fausses](#the-misconceptions)
+    - [1) `T` ne contient que des types possédés](#1-t-only-contains-owned-types)
+    - [2) si `T: 'static` alors `T` doit être valide pour l'ensemble du programme](#2-if-t-static-then-t-must-be-valid-for-the-entire-program)
+    - [3) `&'a T` et `T: 'a` sont la même chose](#3-a-t-and-t-a-are-the-same-thing)
+    - [4) mon code n'est pas générique et n'a pas de durée de vie](#4-my-code-isnt-generic-and-doesnt-have-lifetimes)
+    - [5) s'il compile alors mes annotations à vie sont correctes](#5-if-it-compiles-then-my-lifetime-annotations-are-correct)
+    - [6) les objets de trait en boîte n'ont pas de durée de vie](#6-boxed-trait-objects-dont-have-lifetimes)
+    - [7) les messages d'erreur du compilateur me diront comment réparer mon programme](#7-compiler-error-messages-will-tell-me-how-to-fix-my-program)
+    - [8) les durées de vie peuvent croître et se réduire au moment de l'exécution](#8-lifetimes-can-grow-and-shrink-at-run-time)
+    - [9) la rétrogradation des mut refs en refs partagées est sûre](#9-downgrading-mut-refs-to-shared-refs-is-safe)
+    - [10) les fermetures suivent les mêmes règles d'élision de durée de vie que les fonctions](#10-closures-follow-the-same-lifetime-elision-rules-as-functions)
 - [Conclusion](#conclusion)
-- [Discuss](#discuss)
-- [Notifications](#notifications)
-- [Further Reading](#further-reading)
+- [Discuter](#discuss)
+- [Avis](#notifications)
+- [Lectures complémentaires](#further-reading)
 
 
 
 ## Intro
 
-I've held all of these misconceptions at some point and I see many beginners struggle with these misconceptions today. Some of my terminology might be non-standard, so here's a table of shorthand phrases I use and what I intend for them to mean.
+J'ai eu toutes ces idées fausses à un moment donné et je vois beaucoup de débutants lutter avec ces idées fausses aujourd'hui. Certaines de mes terminologies peuvent ne pas être standard, alors voici un tableau des phrases abrégées que j'utilise et ce que je veux qu'elles signifient.
 
 | Phrase | Shorthand for |
 |-|-|
