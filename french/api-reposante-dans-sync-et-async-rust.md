@@ -210,8 +210,6 @@ dotenv = "0.15"
 +chrono = "0.4"
 ```
 
-Rust's go-to library for handling dates & times is chrono. We're not using the dependency in our project _just yet_ but will very soon after we add a few more dependencies.
-
 La bibliothèque incontournable de Rust pour gérer les dates et les heures est chrono. Nous n'utilisons pas _encore_ la dépendance dans notre projet, mais nous le ferons très peu de temps après avoir ajouté quelques dépendances supplémentaires.
 
 
@@ -285,7 +283,7 @@ pub fn init() -> Result<(), fern::InitError> {
 }
 ```
 
-And then add that module to our main file:
+Et puis ajoutez ce module à notre fichier principal :
 
 ```diff
 // src/main.rs
@@ -302,7 +300,7 @@ fn main() -> Result<(), StdErr> {
 }
 ```
 
-If we run the program now, since `INFO` is the default logging level, here's what we'd see:
+Si nous exécutons le programme maintenant, puisque `INFO` est le niveau de journalisation par défaut, voici ce que nous verrions :
 
 ```bash
 $ cargo run
@@ -336,13 +334,12 @@ fern = "0.6"
 + serde_json = "1.0"
 ```
 
-Pro-tip: when adding a new dependency to a project it's good to look through existing dependencies to see if they have the new dependency as a feature flag. In this case chrono has serde as a feature flag, which if enabled, adds `serde::Serialize` and `serde::Deserialize` impls to all of chrono's types. This will allow us to use chrono types in our own structs later which we will also derive `serde::Serialize` and `serde::Deserialize` impls for.
-
+Un truc de pro : lors de l'ajout d'une nouvelle dépendance à un projet, il est bon de consulter les dépendances existantes pour voir si elles ont la nouvelle dépendance comme indicateur de fonctionnalité. Dans ce cas, chrono a serde comme indicateur de fonctionnalité, qui, s'il est activé, ajoute les implémentations `serde::Serialize` et `serde::Deserialize` à tous les types de chrono. Cela nous permettra d'utiliser plus tard les types chrono dans nos propres structures pour lesquelles nous dériverons également les implémentations `serde::Serialize` et `serde::Deserialize`.
 
 
 ### Domain Modeling
 
-Okay, let's start modeling our domain. We know we will have boards so:
+Bon, commençons à modéliser notre domaine. Nous savons que nous aurons des tableaux donc :
 
 ```rust
 #[derive(serde::Serialize)]
@@ -354,7 +351,7 @@ pub struct Board {
 }
 ```
 
-Unpacking the new stuff:
+Déballage des nouveautés :
 - `#[derive(serde::Serialize)]` derives a `serde::Serialize` impl for `Board` which will allow us to serialize it to JSON using the `serde_json` crate.
 - `#[serde(rename_all = "camelCase")]` renames all of the snake_case member identifiers to camelCase when serializing (or vice versa when deserializing). This is because it's a convention to use snake_case names in Rust but JSON is often produced and consumed by JS code and the JS convention is to use camelCase for member identifiers.
 - Making `id` an `i64` instead of an `u64` might seem like an odd choice but since we're using PostgreSQL as our DB we have to do this because PostgreSQL only supports signed integer types.
