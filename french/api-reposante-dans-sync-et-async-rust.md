@@ -8,9 +8,9 @@ _11 May 2021 · #rust · #diesel · #rocket · #sqlx · #actix-web_
 - [Introduction](#introduction)
 - [General](#general)
     - [Configuracion du projet](#configuration-du-projet)
-    - [Chargement des Variables d'Environnement avec dotenv](#chargement-des-variables-d'environnement-wdotenv)
-    - [Gestion des Dates et Heures avec chrono](#gestion-des-dates-et-heures-wchrono)
-    - [Enregistrement avec fern](#enregistrement-wfern)
+    - [Chargement des Variables d'Environnement w/dotenv](#chargement-des-variables-d'environnement-wdotenv)
+    - [Gestion des Dates et Heures w/chrono](#gestion-des-dates-et-heures-wchrono)
+    - [Enregistrement w/fern](#enregistrement-wfern)
     - [JSON Sérialisation w/serde](#json-sérialisation-wserde)
     - [Modélisation de Domaine](#modelisation-de-domaine)
 - [Implémentation](#sync-implementation)
@@ -66,7 +66,7 @@ _11 May 2021 · #rust · #diesel · #rocket · #sqlx · #actix-web_
 
 
 
-## Intro
+## Introduction
 
 Implémentons un serveur d'API RESTful dans Rust pour une application de gestion de projet imaginaire de style Kanban. Trello est un exemple populaire d'une telle application dans le monde réel:
 
@@ -119,7 +119,7 @@ Après avoir terminé les implémentations de synchronisation et d'asynchronisme
 
 
 
-### Project Setup
+### Configuracion du projet
 
 Toutes les instructions ennuyeuses pour configurer ce projet, comme l'installation de Docker et l'exécution locale, se trouvent dans le référentiel de [code compagnon](https://github.com/pretzelhammer/kanban). Pour cet article, concentrons-nous entièrement sur la partie amusante : le Rust!
 
@@ -145,7 +145,7 @@ fn main() {
 ```
 
 
-### Loading Environment Variables w/dotenv
+### Chargement des Variables d'Environnement w/dotenv
 
 crates
 - dotenv
@@ -192,7 +192,7 @@ fn main() -> Result<(), StdErr> {
 
 
 
-### Handling Dates & Times w/chrono
+### Gestion des Dates et Heures w/chrono
 
 crates
 - chrono
@@ -213,7 +213,7 @@ dotenv = "0.15"
 La bibliothèque incontournable de Rust pour gérer les dates et les heures est chrono. Nous n'utilisons pas _encore_ la dépendance dans notre projet, mais nous le ferons très peu de temps après avoir ajouté quelques dépendances supplémentaires.
 
 
-### Logging w/fern
+### Enregistrement w/fern
 
 crates
 - log
@@ -310,7 +310,7 @@ $ cargo run
 ```
 
 
-### JSON Serialization w/serde
+### JSON Sérialisation w/serde
 
 crates
 - serde
@@ -337,7 +337,7 @@ fern = "0.6"
 Un truc de pro : lors de l'ajout d'une nouvelle dépendance à un projet, il est bon de consulter les dépendances existantes pour voir si elles ont la nouvelle dépendance comme indicateur de fonctionnalité. Dans ce cas, chrono a serde comme indicateur de fonctionnalité, qui, s'il est activé, ajoute les implémentations `serde::Serialize` et `serde::Deserialize` à tous les types de chrono. Cela nous permettra d'utiliser plus tard les types chrono dans nos propres structures pour lesquelles nous dériverons également les implémentations `serde::Serialize` et `serde::Deserialize`.
 
 
-### Domain Modeling
+### Modélisation de Domaine
 
 Bon, commençons à modéliser notre domaine. Nous savons que nous aurons des tableaux donc :
 
