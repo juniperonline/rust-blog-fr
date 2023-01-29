@@ -4,7 +4,7 @@ _19 May 2020 · #rust · #lifetimes_
 
 **Table des matières**
 - [Intro](#intro)
-- [Les Idées fausses](#the-misconceptions)
+- [Les Malentendus](#the-misconceptions)
     - [1) `T` ne contient que des types possédés](#1-t-only-contains-owned-types)
     - [2) si `T: 'static` alors `T` doit être valide pour l'ensemble du programme](#2-if-t-static-then-t-must-be-valid-for-the-entire-program)
     - [3) `&'a T` et `T: 'a` sont la même chose](#3-a-t-and-t-a-are-the-same-thing)
