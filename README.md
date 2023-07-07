@@ -4,7 +4,7 @@ This repository is dedicated to providing the amazing initiative [pretzelhammer'
 
 To Do:
 
-- [ ] RESTful API in Sync & Async Rust 
+- [x] RESTful API in Sync & Async Rust 
 - [ ] Tour of Rust's Standard Library Traits
 - [ ] Learn Assembly with Entirely Too Many Brainfuck Compilers
 - [ ] Sizedness in Rust
