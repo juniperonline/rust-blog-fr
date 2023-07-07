@@ -4,55 +4,56 @@ _22 July 2020 · #rust · #sizedness_
 
 **Table of Contents**
 
-- [Intro](#intro)
-- [Sizedness](#sizedness)
-- [`Sized` Trait](#sized-trait)
-- [`Sized` in Generics](#sized-in-generics)
-- [Unsized Types](#unsized-types)
-    - [Slices](#slices)
-    - [Trait Objects](#trait-objects)
-    - [Trait Object Limitations](#trait-object-limitations)
-        - [Cannot Cast Unsized Types to Trait Objects](#cannot-cast-unsized-types-to-trait-objects)
-        - [Cannot create Multi-Trait Objects](#cannot-create-multi-trait-objects)
-    - [User-Defined Unsized Types](#user-defined-unsized-types)
-- [Zero-Sized Types](#zero-sized-types)
-    - [Unit Type](#unit-type)
-    - [User-Defined Unit Structs](#user-defined-unit-structs)
-    - [Never Type](#never-type)
-    - [User-Defined Pseudo Never Types](#user-defined-pseudo-never-types)
+- [Introduction](#introduction)
+- [Dimension](#dimension)
+- [Trait `Dimension` (`Dimension`)](#trait-dimension-dimension)
+- [Trait `Dimension` avec des génériques](#trait-dimension-avec-des-génériques)
+- [Types de dimension variable](#types-de-dimension-variable)
+    - [Tableaux](#tableaux)
+    - [Objets de trait](#objets-de-trait)
+    - [Limitations des objets de trait](#limitations-des-objets-de-trait)
+        - [Impossible de convertir des types de dimension variable en objets de trait](#impossible-de-convertir-des-types-de-dimension-variable-en-objets-de-trait)
+        - [Impossible de créer des objets de plusieurs traits](#impossible-de-créer-des-objets-de-plusieurs-traits)
+    - [Types de dimension variable définis par l'utilisateur](#types-de-dimension-variable-définis-par-lutilisateur)
+- [Types de dimension nulle](#types-de-dimension-nulle)
+    - [Type unité](#type-unité)
+    - [Structures unitaires définies par l'utilisateur](#structures-unitaires-définies-par-lutilisateur)
+    - [Type jamais](#type-jamais)
+    - [Types jamais pseudo-définis par l'utilisateur](#types-jamais-pseudo-définis-par-lutilisateur)
     - [PhantomData](#phantomdata)
 - [Conclusion](#conclusion)
-- [Discuss](#discuss)
+- [Discussion](#discussion)
 - [Notifications](#notifications)
-- [Further Reading](#further-reading)
+- [Pour aller plus loin](#pour-aller-plus-loin)
 
 
 
-## Intro
+## Introduction
 
-Sizedness is lowkey one of the most important concepts to understand in Rust. It intersects a bunch of other language features in often subtle ways and only rears its ugly head in the form of _"x doesn't have size known at compile time"_ error messages which every Rustacean is all too familiar with. In this article we'll explore all flavors of sizedness from sized types, to unsized types, to zero-sized types while examining their use-cases, benefits, pain points, and workarounds.
+La notion de "taille connue à la compilation" (Sizedness) est l'une des notions les plus importantes à comprendre en Rust. Elle intersecte de nombreuses autres fonctionnalités du langage de manière souvent subtile et ne se manifeste que sous la forme de messages d'erreur du type "_x n'a pas une taille connue à la compilation_", avec lesquels tout Rustacean est malheureusement trop familier. Dans cet article, nous explorerons toutes les facettes de la taille connue à la compilation, des types de taille connue aux types de taille inconnue, en passant par les types de taille nulle, tout en examinant leurs cas d'utilisation, avantages, difficultés et solutions de contournement.
 
-Table of phrases I use and what they're supposed to mean:
+Tableau des phrases que j'utilise et de ce qu'elles sont censées signifier :
 
-| Phrase | Shorthand for |
+| Phrase | Abréviation |
 |-|-|
-| sizedness | property of being sized or unsized |
-| sized type | type with a known size at compile time |
-| 1) unsized type _or_<br>2) DST | dynamically-sized type, i.e. size not known at compile time |
-| ?sized type | type that may or may not be sized |
-| unsized coercion | coercing a sized type into an unsized type |
-| ZST | zero-sized type, i.e. instances of the type are 0 bytes in size |
-| width | single unit of measurement of pointer width |
-| 1) thin pointer _or_<br>2) single-width pointer | pointer that is _1 width_ |
-| 1) fat pointer _or_<br>2) double-width pointer | pointer that is _2 widths_ |
-| 1) pointer _or_<br>2) reference | some pointer of some width, width will be clarified by context |
-| slice | double-width pointer to a dynamically sized view into some array |
+| Taille connue à la compilation | sizedness |
+| Type de taille connue | type avec une taille connue à la compilation |
+| 1) Type de taille inconnue _ou_<br>2) DST (Dynamic Sized Type) | type de taille dynamique, c'est-à-dire dont la taille n'est pas connue à la compilation |
+| Type ?sized | type qui peut être de taille connue ou inconnue |
+| Conversion de taille inconnue | conversion d'un type de taille connue en un type de taille inconnue |
+| ZST (Zero-Sized Type) | type de taille nulle, c'est-à-dire dont les instances ont une taille de 0 octet |
+| Largeur | unité de mesure de la largeur d'un pointeur |
+| 1) Pointeur fin _ou_<br>2) Pointeur d'une largeur | pointeur d'une _largeur_ |
+| 1) Pointeur épais _ou_<br>2) Pointeur de double largeur | pointeur de _double largeur_ |
+| 1) Pointeur _ou_<br>2) Référence | un certain pointeur d'une certaine largeur, la largeur sera précisée par le contexte |
+| Tranche (Slice) | pointeur de double largeur vers une vue de taille dynamique dans un certain tableau |
 
 
 
-## Sizedness
 
-In Rust a type is sized if its size in bytes can be determined at compile-time. Determining a type's size is important for being able to allocate enough space for instances of that type on the stack. Sized types can be passed around by value or by reference. If a type's size can't be determined at compile-time then it's referred to as an unsized type or a DST, Dynamically-Sized Type. Since unsized types can't be placed on the stack they can only be passed around by reference. Some examples of sized and unsized types:
+## Taille connue à la compilation
+
+En Rust, un type est de taille connue (sized) si sa taille en octets peut être déterminée à la compilation. La détermination de la taille d'un type est importante pour pouvoir allouer suffisamment d'espace pour les instances de ce type sur la pile. Les types de taille connue peuvent être passés par valeur ou par référence. Si la taille d'un type ne peut pas être déterminée à la compilation, il est appelé un type de taille inconnue ou un DST (Dynamic Sized Type, type de taille dynamique). Puisque les types de taille inconnue ne peuvent pas être placés sur la pile, ils ne peuvent être transmis qu'en tant que référence. Voici quelques exemples de types de taille connue et de types de taille inconnue :
 
 ```rust
 use std::mem::size_of;
@@ -113,16 +114,16 @@ fn main() {
 }
 ```
 
-How we determine the size of sized types is straight-forward: all primitives and pointers have known sizes and all structs, tuples, enums, and arrays are just made up of primitives and pointers or other nested structs, tuples, enums, and arrays so we can just count up the bytes recursively, taking into account extra bytes needed for padding and alignment. We can't determine the size of unsized types for similarly straight-forward reasons: slices can have any number of elements in them and can thus be of any size at run-time and trait objects can be implemented by any number of structs or enums and thus can also be of any size at run-time.
+Comment nous déterminons la taille des types de taille connue est assez simple : tous les types primitifs et les pointeurs ont des tailles connues, et tous les structs, tuples, enums et tableaux sont composés de types primitifs et de pointeurs ou d'autres structs, tuples, enums et tableaux imbriqués. Nous pouvons donc simplement compter les octets de manière récursive, en prenant en compte les octets supplémentaires nécessaires pour le padding et l'alignement. Nous ne pouvons pas déterminer la taille des types de taille inconnue pour des raisons similaires et simples : les tranches (slices) peuvent contenir un nombre quelconque d'éléments et peuvent donc avoir n'importe quelle taille à l'exécution, et les objets de trait peuvent être implémentés par un nombre quelconque de structs ou enums et peuvent donc également avoir une taille quelconque à l'exécution.
 
-**Pro tips**
-- pointers of dynamically sized views into arrays are called slices in Rust, e.g. a `&str` is a _"string slice"_, a `&[i32]` is an _"i32 slice"_
-- slices are double-width because they store a pointer to the array and the number of elements in the array
-- trait object pointers are double-width because they store a pointer to the data and a pointer to a vtable
-- unsized structs pointers are double-width because they store a pointer to the struct data and the size of the struct
-- unsized structs can only have 1 unsized field and it must be the last field in the struct
+**Conseils pratiques**
+- Les pointeurs vers des vues de taille dynamique dans des tableaux sont appelés tranches (slices) en Rust, par exemple un `&str` est une _"tranche de chaîne"_, un `&[i32]` est une _"tranche de i32"_.
+- Les tranches (slices) sont de double largeur car elles stockent un pointeur vers le tableau et le nombre d'éléments dans le tableau.
+- Les pointeurs d'objets de trait (trait object) sont de double largeur car ils stockent un pointeur vers les données et un pointeur vers une table des méthodes (vtable).
+- Les pointeurs vers des structs de taille inconnue sont de double largeur car ils stockent un pointeur vers les données du struct et la taille du struct.
+- Les structs de taille inconnue ne peuvent avoir qu'un seul champ de taille inconnue, et il doit être le dernier champ du struct.
 
-To really hammer home the point about double-width pointers for unsized types here's a commented code example comparing arrays to slices:
+Pour bien illustrer le point sur les pointeurs de double largeur pour les types de taille inconnue, voici un exemple de code commenté comparant les tableaux aux tranches (slices) :
 
 ```rust
 use std::mem::size_of;
@@ -167,7 +168,7 @@ fn main() {
 }
 ```
 
-And here's another commented code example comparing structs to trait objects:
+Et voici un autre exemple de code commenté comparant les structs aux objets de trait :
 
 ```rust
 use std::mem::size_of;
@@ -242,22 +243,20 @@ fn main() {
 }
 ```
 
-**Key Takeaways**
-- only instances of sized types can be placed on the stack, i.e. can be passed around by value
-- instances of unsized types can't be placed on the stack and must be passed around by reference
-- pointers to unsized types are double-width because aside from pointing to data they need to do an extra bit of bookkeeping to also keep track of the data's length _or_ point to a vtable
+**Points clés**
+- Seules les instances de types de taille connue peuvent être placées sur la pile, c'est-à-dire peuvent être transmises par valeur.
+- Les instances de types de taille inconnue ne peuvent pas être placées sur la pile et doivent être transmises par référence.
+- Les pointeurs vers des types de taille inconnue sont de double largeur car, en plus de pointer vers les données, ils doivent effectuer une petite gestion supplémentaire pour suivre également la longueur des données _ou_ pointer vers une table des méthodes (vtable).
 
+## Trait `Sized`
 
+Le trait `Sized` en Rust est un trait automatique (auto trait) et un trait marqueur.
 
-## `Sized` Trait
+Les traits automatiques sont des traits qui sont automatiquement implémentés pour un type s'il satisfait certaines conditions. Les traits marqueurs sont des traits qui marquent un type comme ayant une certaine propriété. Les traits marqueurs n'ont pas d'éléments de trait tels que des méthodes, des fonctions associées, des constantes associées ou des types associés. Tous les traits automatiques sont des traits marqueurs, mais tous les traits marqueurs ne sont pas des traits automatiques. Les traits automatiques doivent être des traits marqueurs pour que le compilateur puisse fournir une implémentation par défaut automatique pour eux, ce qui ne serait pas possible si le trait avait des éléments de trait.
 
-The `Sized` trait in Rust is an auto trait and a marker trait.
+Un type obtient une implémentation automatique de `Sized` si tous ses membres sont également `Sized`. Ce que signifie "membres" dépend du type contenant, par exemple : les champs d'une structure, les variantes d'une énumération, les éléments d'un tableau, les éléments d'un tuple, etc. Une fois qu'un type a été "marqué" avec une implémentation de `Sized`, cela signifie que sa taille en octets est connue à la compilation.
 
-Auto traits are traits that get automatically implemented for a type if it passes certain conditions. Marker traits are traits that mark a type as having a certain property. Marker traits do not have any trait items such as methods, associated functions, associated constants, or associated types. All auto traits are marker traits but not all marker traits are auto traits. Auto traits must be marker traits so the compiler can provide an automatic default implementation for them, which would not be possible if the trait had any trait items.
-
-A type gets an auto `Sized` implementation if all of its members are also `Sized`. What "members" means depends on the containing type, for example: fields of a struct, variants of an enum, elements of an array, items of a tuple, and so on. Once a type has been "marked" with a `Sized` implementation that means its size in bytes is known at compile time.
-
-Other examples of auto marker traits are the `Send` and `Sync` traits. A type is `Send` if it is safe to send that type across threads. A type is `Sync` if it's safe to share references of that type between threads. A type gets auto `Send` and `Sync` implementations if all of its members are also `Send` and `Sync`. What makes `Sized` somewhat special is that it's not possible to opt-out of unlike with the other auto marker traits which are possible to opt-out of.
+D'autres exemples de traits marqueurs automatiques sont les traits `Send` et `Sync`. Un type est `Send` s'il est sûr d'envoyer ce type entre les threads. Un type est `Sync` s'il est sûr de partager des références de ce type entre les threads. Un type obtient des implémentations automatiques de `Send` et `Sync` si tous ses membres sont également `Send` et `Sync`. Ce qui rend `Sized` quelque peu spécial, c'est qu'il n'est pas possible de l'exclure, contrairement aux autres traits marqueurs automatiques, pour lesquels il est possible de l'exclure.
 
 ```rust
 #![feature(negative_impls)]
@@ -275,18 +274,16 @@ impl !Sync for Struct {} // ✅
 impl !Sized for Struct {} // ❌
 ```
 
-This seems reasonable since there might be reasons why we wouldn't want our type to be sent or shared across threads, however it's hard to imagine a scenario where we'd want the compiler to "forget" the size of our type and treat it as an unsized type as that offers no benefits and merely makes the type more difficult to work with.
+Cela semble raisonnable, car il peut y avoir des raisons pour lesquelles nous ne voudrions pas que notre type soit envoyé ou partagé entre les threads. Cependant, il est difficile d'imaginer un scénario dans lequel nous voudrions que le compilateur "oublie" la taille de notre type et le traite comme un type de taille inconnue, car cela n'offre aucun avantage et rend simplement le type plus difficile à manipuler.
 
-Also, to be super pedantic `Sized` is not technically an auto trait since it's not defined using the `auto` keyword but the special treatment it gets from the compiler makes it behave very similarly to auto traits so in practice it's okay to think of it as an auto trait.
+De plus, pour être très pointilleux, `Sized` n'est pas techniquement un auto-trait car il n'est pas défini à l'aide du mot-clé `auto`. Cependant, le traitement spécial qu'il reçoit du compilateur le fait se comporter de manière très similaire aux auto-traits. En pratique, il est donc acceptable de le considérer comme un auto-trait.
 
-**Key Takeaways**
-- `Sized` is an "auto" marker trait
+**Points clés**
+- `Sized` est un trait marqueur "auto".
 
+## `Sized` dans les génériques
 
-
-## `Sized` in Generics
-
-It's not immediately obvious that whenever we write any generic code every generic type parameter gets auto-bound with the `Sized` trait by default.
+Il n'est pas immédiatement évident que chaque fois que nous écrivons du code générique, chaque paramètre de type générique est automatiquement lié au trait `Sized` par défaut.
 
 ```rust
 // this generic function...
@@ -304,14 +301,14 @@ fn func<T: ?Sized>(t: &T) {} // ✅
 fn func<T: ?Sized>(t: Box<T>) {} // ✅
 ```
 
-**Pro tips**
-- `?Sized` can be pronounced _"optionally sized"_ or _"maybe sized"_ and adding it to a type parameter's bounds allows the type to be sized or unsized
-- `?Sized` in general is referred to as a _"widening bound"_ or a _"relaxed bound"_ as it relaxes rather than constrains the type parameter
-- `?Sized` is the only relaxed bound in Rust
+**Conseils pratiques**
+- `?Sized` peut être prononcé "_optionnellement de taille connue_" ou "_peut-être de taille connue_", et l'ajouter aux contraintes d'un paramètre de type permet au type d'être de taille connue ou de taille inconnue.
+- `?Sized` est généralement appelé une "_contrainte élargie_" ou une "_contrainte assouplie_", car elle assouplit plutôt que de restreindre le paramètre de type.
+- `?Sized` est la seule contrainte assouplie en Rust.
 
-So why does this matter? Well, any time we're working with a generic type and that type is behind a pointer we almost always want to opt-out of the default `Sized` bound to make our function more flexible in what argument types it will accept. Also, if we don't opt-out of the default `Sized` bound we'll eventually get some surprising and confusing compile error messages.
+Pourquoi cela importe-t-il ? Eh bien, chaque fois que nous travaillons avec un type générique et que ce type est derrière un pointeur, nous voulons presque toujours exclure la contrainte `Sized` par défaut pour rendre notre fonction plus flexible quant aux types d'arguments qu'elle acceptera. De plus, si nous n'excluons pas la contrainte `Sized` par défaut, nous finirons par obtenir des messages d'erreur de compilation surprenants et déroutants.
 
-Let me take you on the journey of the first generic function I ever wrote in Rust. I started learning Rust before the `dbg!` macro landed in stable so the only way to print debug values was to type out `println!("{:?}", some_value);` every time which is pretty tedious so I decided to write a `debug` helper function like this:
+Permettez-moi de vous emmener dans le voyage de la première fonction générique que j'ai écrite en Rust. J'ai commencé à apprendre Rust avant que la macro `dbg!` ne soit disponible en version stable, donc la seule façon d'afficher les valeurs de débogage était de taper `println!("{:?}", some_value);` à chaque fois, ce qui est assez fastidieux. J'ai donc décidé d'écrire une fonction d'aide `debug` comme ceci :
 
 ```rust
 use std::fmt::Debug;
