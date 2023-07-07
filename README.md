@@ -1,6 +1,6 @@
 # Rust Blog French Translation #
 
-This repository is dedicated to providing the amazing initiative [pretzelhammer's Rust blog](https://github.com/pretzelhammer/rust-blog) with a translation in French.
+This repository is dedicated to providing the amazing initiative [pretzelhammer's Rust blog](https://github.com/pretzelhammer/rust-blog) with a translation in French. I'm using this repository to prepare the articles for a pull request.
 
 To Do:
 
