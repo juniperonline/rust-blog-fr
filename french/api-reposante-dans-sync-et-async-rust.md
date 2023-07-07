@@ -76,18 +76,18 @@ En surface, Kanban est assez simple : il y a un tableau et des cartes. Le platea
 
 Bien qu'il soit simple à première vue, Kanban, et toutes sortes de logiciels de gestion de projet en général, est littéralement un gouffre de complexité sans fond. Il y a un million de choses que nous pourrions mettre en œuvre, et après avoir terminé le premier million de choses, il y en aurait un million de plus. Cependant, puisque j'essaie d'écrire un seul article et non une série de livres entière, gardons la portée des fonctionnalités minuscule.
 
-The server should support the ability to:
-- Create boards
-    - Boards have names
-- Get a list of all boards
-- Delete boards
-- Create cards
-    - Can associate cards with boards
-    - Cards have descriptions and statuses
-- Get a list of all the cards on a board
-- Get a board summary: count of all the cards on the board grouped by their status
-- Update cards
-- Delete cards
+Le serveur devrait prendre en charge les fonctionnalités suivantes :
+- Créer des tableaux
+    - Les tableaux ont des noms
+- Obtenir une liste de tous les tableaux
+- Supprimer des tableaux
+- Créer des cartes
+    - Les cartes peuvent être associées à des tableaux
+    - Les cartes ont des descriptions et des états
+- Obtenir une liste de toutes les cartes d'un tableau
+- Obtenir un résumé du tableau : le nombre de toutes les cartes du tableau regroupées par leur état
+- Mettre à jour des cartes
+- Supprimer des cartes
 
 Et c'est tout! Pour rendre ce projet un peu plus intéressant, incluons également l'authentification basée sur les jetons pour tous les points de terminaison du serveur, mais restons simples : tant qu'une requête contient un jeton valide, elle a accès à tous les tableaux et cartes.
 
@@ -357,7 +357,7 @@ Déballage des nouveautés :
 - Making `id` an `i64` instead of an `u64` might seem like an odd choice but since we're using PostgreSQL as our DB we have to do this because PostgreSQL only supports signed integer types.
 - A `created_at` member is always useful to have, if for no other reason than to be able to sort entities by chronological order when no better sort order is available.
 
-Okay, let's add cards and statuses:
+D'accord, ajoutons des cartes et des statuts :
 
 ```rust
 #[derive(serde::Serialize)]
@@ -379,7 +379,7 @@ pub enum Status {
 }
 ```
 
-Since we'd also like to support returning a "board summary" which contains the count of all of the cards on a board grouped by their status here's the model for that:
+Puisque nous souhaitons également prendre en charge le renvoi d'un "résumé du tableau" qui contient le nombre de toutes les cartes du tableau regroupées par leur état, voici le modèle correspondant :
 
 ```rust
 #[derive(serde::Serialize)]
@@ -390,7 +390,7 @@ pub struct BoardSummary {
 }
 ```
 
-When using the API to create a new board users can provide the board name but not its id, since that will be set by the DB, so we need a model for that as well:
+Lors de l'utilisation de l'API pour créer un nouveau tableau, les utilisateurs peuvent fournir le nom du tableau mais pas son identifiant, car celui-ci sera défini par la base de données. Nous avons donc également besoin d'un modèle pour cela :
 
 ```rust
 #[derive(serde::Deserialize)]
@@ -399,7 +399,7 @@ pub struct CreateBoard {
 }
 ```
 
-Likewise users can also create cards. When creating a card let's assume we only want users to provide the new card's description and what board it should be associated with. The new card will get the default todo status and will get its id set by the DB:
+De même, les utilisateurs peuvent également créer des cartes. Lors de la création d'une carte, supposons que nous souhaitons uniquement demander aux utilisateurs de fournir la description de la nouvelle carte et à quel tableau elle doit être associée. La nouvelle carte recevra le statut par défaut "à faire" et son identifiant sera défini par la base de données :
 
 ```rust
 #[derive(serde::Deserialize)]
@@ -410,7 +410,7 @@ pub struct CreateCard {
 }
 ```
 
-When updating a card let's assume we want users to only be able to update the description or the status. It would be pretty weird if we allowed them to move cards between boards which is a pretty unusual feature in most project management apps:
+Lors de la mise à jour d'une carte, supposons que nous voulons que les utilisateurs puissent uniquement mettre à jour la description ou le statut. Il serait assez étrange de leur permettre de déplacer des cartes entre les tableaux, ce qui est une fonctionnalité assez inhabituelle dans la plupart des applications de gestion de projet :
 
 ```rust
 #[derive(serde::Deserialize)]
@@ -420,7 +420,7 @@ pub struct UpdateCard {
 }
 ```
 
-Throw all of those into their own module and we get:
+En regroupant toutes ces fonctionnalités dans leur propre module, nous obtenons :
 
 ```rust
 // src/models.rs
@@ -502,11 +502,11 @@ fn main() -> Result<(), StdErr> {
 ```
 
 
-## Sync Implementation
+## Implémentation de synchronisation :
 
 
 
-### SQL Schema Migrations w/diesel-cli
+### Migrations de schéma SQL w/diesel-cli
 
 crates
 - diesel-cli
@@ -515,7 +515,7 @@ crates
 cargo install diesel_cli
 ```
 
-If the above command doesn't work at first, it's likely because we don't have all the development libraries for all of diesel-cli's supported databases. Since we're just using PostgreSQL, we can make sure the development libraries are installed with these commands:
+Si la commande ci-dessus ne fonctionne pas initialement, il est probable que nous n'ayons pas toutes les bibliothèques de développement pour toutes les bases de données prises en charge par diesel-cli. Étant donné que nous utilisons simplement PostgreSQL, nous pouvons nous assurer que les bibliothèques de développement sont installées avec ces commandes :
 
 ```bash
 # macOS
@@ -525,27 +525,27 @@ brew install postgresql
 apt-get install postgresql libpq-dev
 ```
 
-And then we can tell cargo to only install diesel-cli with support for PostgreSQL:
+Ensuite, nous pouvons indiquer à Cargo d'installer uniquement diesel-cli avec la prise en charge de PostgreSQL :
 
 ```bash
 cargo install diesel_cli --no-default-features --features postgres
 ```
 
-Once we have diesel-cli installed we can use it to create new migrations and execute pending migrations. diesel-cli figures out which DB to connect to by checking the `DATABASE_URL` environment variable, which it will also load from an `.env` file if one exists in the current working directory.
+Une fois que nous avons installé diesel-cli, nous pouvons l'utiliser pour créer de nouvelles migrations et exécuter les migrations en attente. Diesel-cli détermine la base de données à laquelle se connecter en vérifiant la variable d'environnement `DATABASE_URL`, qu'il chargera également à partir d'un fichier `.env` s'il existe dans le répertoire de travail actuel.
 
-Assuming the DB is currently running and a `DATABASE_URL` environment variable is present, here's the first diesel-cli command we'd run to bootstrap our project:
+En supposant que la base de données est actuellement en cours d'exécution et qu'une variable d'environnement `DATABASE_URL` est présente, voici la première commande diesel-cli que nous exécuterions pour initialiser notre projet :
 
 ```bash
 diesel setup
 ```
 
-With this diesel-cli creates a `migrations` directory where we can generate and write our DB schema migrations. Let's generate our first migration:
+Avec cela, diesel-cli crée un répertoire `migrations` où nous pouvons générer et écrire nos migrations de schéma de base de données. Générons notre première migration :
 
 ```bash
 diesel migration generate create_boards
 ```
 
-This will create a new directory, e.g. `migrations/<year>-<month>-<day>-<time>_create_boards`, with an `up.sql` and `down.sql` which is where we'll write our SQL queries. The "up" query is for creating or modifying our DB schema, in this case creating a boards table:
+Cela créera un nouveau répertoire, par exemple `migrations/<year>-<month>-<day>-<time>_create_boards`, avec un fichier `up.sql` et `down.sql` où nous écrirons nos requêtes SQL. La requête `up` est utilisée pour créer ou modifier notre schéma de base de données. Dans ce cas, nous allons créer une table `boards` :
 
 ```sql
 -- create_boards up.sql
@@ -564,20 +564,20 @@ VALUES
 ('Test board 3');
 ```
 
-And the "down" query is for reverting the schema changes made in the "up" query, in this case dropping the created boards table:
+Et la requête `down` est utilisée pour annuler les modifications du schéma effectuées dans la requête "up". Dans ce cas, nous allons supprimer la table `boards` créée :
 
 ```sql
 -- create_boards down.sql
 DROP TABLE IF EXISTS boards;
 ```
 
-We will also need to store some cards:
+Nous devrons également stocker certaines cartes :
 
 ```bash
 diesel migration generate create_cards
 ```
 
-The up query for cards:
+La requête `up` pour les cartes :
 
 ```sql
 -- create_cards up.sql
@@ -608,20 +608,20 @@ VALUES
 (3, 'Test card 7', 'done');
 ```
 
-And the down query for cards:
+La requête `down` pour les cartes :
 
 ```sql
 -- create_cards down.sql
 DROP TABLE IF EXISTS cards;
 ```
 
-After writing our migrations we can run them with this command:
+Après avoir écrit nos migrations, nous pouvons les exécuter avec cette commande :
 
 ```bash
 diesel migration run
 ```
 
-This executes the migrations in chronological order and also writes a Diesel schema file which should look like something like this at this point:
+Cela exécute les migrations dans l'ordre chronologique et écrit également un fichier de schéma Diesel qui devrait ressembler à quelque chose comme ceci à ce stade :
 
 ```rust
 // src/schema.rs
@@ -652,7 +652,7 @@ allow_tables_to_appear_in_same_query!(
 );
 ```
 
-The above file will always be generated by diesel-cli and is not something we should ever try to edit by hand, however the `diesel setup` command from earlier also generates a `diesel.toml` configuration file which we can edit if we need to configure or modify how the Diesel schema is generated:
+Le fichier ci-dessus sera toujours généré par diesel-cli et ce n'est pas quelque chose que nous devrions essayer de modifier manuellement. Cependant, la commande `diesel setup` précédente génère également un fichier de configuration `diesel.toml` que nous pouvons modifier si nous avons besoin de configurer ou de modifier la façon dont le schéma Diesel est généré.
 
 ```toml
 # diesel.toml
@@ -661,11 +661,10 @@ The above file will always be generated by diesel-cli and is not something we sh
 file = "src/schema.rs"
 ```
 
-This will be useful to know for later.
+Cela sera utile à savoir pour plus tard.
 
 
-
-### Executing SQL Queries w/Diesel
+### Exécution de requêtes SQL w/Diesel
 
 crates
 - diesel
@@ -688,7 +687,7 @@ serde_json = "1.0"
 +diesel = { version = "1.4", features = ["postgres", "chrono"] }
 ```
 
-We enable the postgres and chrono feature flags since we'll be connecting to PostgreSQL and deserializing PostgreSQL's timestamp types to chrono types. Updated main file:
+Nous activons les indicateurs de fonctionnalité postgres et chrono car nous allons nous connecter à PostgreSQL et désérialiser les types de timestamp de PostgreSQL en types de chrono. Fichier principal mis à jour :
 
 ```diff
 // src/main.rs
@@ -710,7 +709,7 @@ fn main() -> Result<(), StdErr> {
 }
 ```
 
-Before decorating our models with Diesel's derive macros we have to bring the generated types from the Diesel schema file into scope:
+Avant de décorer nos modèles avec les macros dérivées de Diesel, nous devons amener les types générés à partir du fichier de schéma Diesel dans la portée :
 
 ```diff
 // src/models.rs
@@ -730,19 +729,19 @@ error[E0412]: cannot find type `Status_enum` in this scope
    |                   ^^^^^^^^^^^ not found in this scope
 ```
 
-Uh oh, now what?
+Oh là là, et maintenant ?
 
 
 
-#### Mapping DB Enums to Rust Enums
+#### Mappage des Énumérations DB aux Énumérations Rust
 
-As you may recall from the preceding section we defined an enum type in PostgreSQL like so:
+Comme vous vous en souvenez peut-être de la section précédente, nous avons défini un type énuméré dans PostgreSQL de la manière suivante :
 
 ```sql
 CREATE TYPE STATUS_ENUM AS ENUM ('todo', 'doing', 'done');
 ```
 
-Unfortunately Diesel does not support mapping DB enums to Rust enums out-of-the-box in a convenient way, so we have to pull in an unofficial 3rd-party library to do this for us:
+Malheureusement, Diesel ne prend pas en charge nativement la correspondance des énumérations de la base de données vers les énumérations Rust de manière pratique. Nous devons donc utiliser une bibliothèque tierce non officielle pour le faire à notre place.
 
 ```diff
 # Cargo.toml
@@ -763,7 +762,7 @@ diesel = { version = "1.4", features = ["postgres", "chrono"] }
 +diesel-derive-enum = { version = "1.1", features = ["postgres"] }
 ```
 
-Then we decorate the enum type with the following derive macro and attribute:
+Ensuite, nous décorons le type énuméré avec la macro de dérivation et l'attribut suivants :
 
 ```diff
 -#[derive(serde::Serialize, serde::Deserialize)]
@@ -777,9 +776,9 @@ pub enum Status {
 }
 ```
 
-The derive macro generates a new type called `Status_enum` within the same scope, and this type can be used by Diesel to map the `STATUS_ENUM` DB enum to our `Status` Rust enum.
+La macro de dérivation génère un nouveau type appelé `Status_enum` dans la même portée, et ce type peut être utilisé par Diesel pour faire correspondre l'énumération DB `STATUS_ENUM` à notre énumération Rust `Status`.
 
-Then we update `diesel.toml` with this:
+Ensuite, nous mettons à jour `diesel.toml` avec ceci :
 
 ```diff
 [print_schema]
@@ -787,13 +786,13 @@ file = "src/schema.rs"
 +import_types = ["diesel::sql_types::*", "crate::models::Status_enum"]
 ```
 
-Then we re-generate the Diesel schema file using this command:
+Ensuite, nous régénérons le fichier de schéma Diesel en utilisant cette commande :
 
 ```bash
 diesel print-schema > ./src/schema.rs
 ```
 
-Which updates our Diesel schema file to this:
+Cela met à jour notre fichier de schéma Diesel à ceci :
 
 ```diff
 // src/schema.rs
@@ -830,13 +829,12 @@ allow_tables_to_appear_in_same_query!(
 );
 ```
 
-And now when we run `cargo check` everything type checks just fine. Wow, that was quite the annoying hassle, but thankfully it's over.
+Et maintenant, lorsque nous exécutons `cargo check`, tout passe avec succès au niveau des types. Wow, c'était vraiment un problème agaçant, mais heureusement, c'est terminé.
 
 
+#### Récupération de données
 
-#### Fetching Data
-
-Alright, now let's impl some Diesel traits for our models by using the handy derive macros:
+Très bien, implémentons maintenant certains traits Diesel pour nos modèles en utilisant les macros de dérivation pratiques :
 
 ```diff
 -#[derive(serde::Serialize)]
@@ -849,9 +847,9 @@ pub struct Board {
 }
 ```
 
-Deriving `diesel::Queryable` for a struct allows it to be returned as the result of a Diesel query. The order of the struct's members must match the order of the columns in the rows returned from the Diesel query.
+La dérivation de `diesel::Queryable` pour une structure permet de la renvoyer en tant que résultat d'une requête Diesel. L'ordre des membres de la structure doit correspondre à l'ordre des colonnes dans les lignes renvoyées par la requête Diesel.
 
-The schema file generated by Diesel exports a DSL we can use to craft DB queries with. One of the major benefits of using the DSL is that it gives us verification at compile-time that all of our SQL queries are syntactically and semantically correct! Here's some commented examples:
+Le fichier de schéma généré par Diesel exporte un DSL que nous pouvons utiliser pour construire des requêtes de base de données. L'un des principaux avantages de l'utilisation du DSL est qu'il nous permet de vérifier lors de la compilation que toutes nos requêtes SQL sont correctes sur le plan syntaxique et sémantique ! Voici quelques exemples commentés :
 
 ```rust
 use diesel::prelude::*;
@@ -991,7 +989,7 @@ pub struct Card {
 }
 ```
 
-We went over a bunch of query examples above but here's a few more:
+Nous avons examiné plusieurs exemples de requêtes précédemment, mais voici quelques autres exemples :
 
 ```rust
 use diesel::prelude::*;
@@ -1027,7 +1025,8 @@ fn cards_by_status(conn: &PgConnection, status: Status) -> Vec<Card> {
 }
 ```
 
-So it seems like we can craft almost every query our server needs to support using Diesel's DSL. _Almost_. One of the queries we'd like to support is returning a "board summary" which is the count of all the cards within a board grouped by their status. This is how we'd write the SQL query:
+
+Il semble donc que nous puissions créer presque toutes les requêtes dont notre serveur a besoin en utilisant le DSL de Diesel. Presque toutes. Une des requêtes que nous aimerions prendre en charge consiste à renvoyer un "résumé du tableau", c'est-à-dire le nombre de toutes les cartes d'un tableau regroupées par leur statut. Voici comment nous écririons la requête SQL :
 
 ```sql
 SELECT count(*), status
@@ -1036,9 +1035,9 @@ WHERE cards.board_id = $1
 GROUP BY status;
 ```
 
-Unfortunately we cannot use Diesel's generated DSL to craft this query. Like all ORMs though, Diesel provides a method to run SQL directly, and that method is `diesel::sql_query` so let's talk about how we'd use that to get our board summary.
+Malheureusement, nous ne pouvons pas utiliser le DSL généré par Diesel pour créer cette requête. Toutefois, comme tous les ORM, Diesel fournit une méthode pour exécuter directement du SQL, et cette méthode est `diesel::sql_query`. Parlons donc de la façon dont nous utiliserions cela pour obtenir notre résumé du tableau.
 
-First we need to create a new model which will be the result of our query and derive `diesel::QueryableByName` for it as well as decorate its members with the diesel types they map to:
+Tout d'abord, nous devons créer un nouveau modèle qui sera le résultat de notre requête et dériver `diesel::QueryableByName` pour celui-ci, ainsi que décorer ses membres avec les types Diesel auxquels ils correspondent :
 
 ```rust
 #[derive(Default, serde::Serialize)]
@@ -1073,9 +1072,9 @@ impl From<Vec<StatusCount>> for BoardSummary {
 }
 ```
 
-Why do structs which are the result of "regular" Diesel queries have to derive `diesel::Queryable` but structs which are the result of `diesel::sql_query` queries have to derive `diesel::QueryableByName`? According to the Diesel docs the former deserializes DB row columns by index and the latter deserializes DB row columns by name, and the first one is more performant but the latter is a bit more foolproof, hence its use for arbitrary SQL queries.
+Pourquoi les structures qui sont le résultat de requêtes Diesel "classiques" doivent-elles dériver `diesel::Queryable`, tandis que les structures qui sont le résultat de requêtes `diesel::sql_query` doivent dériver `diesel::QueryableByName` ? Selon la documentation de Diesel, les premières désérialisent les colonnes de ligne de base de données par index, tandis que les dernières désérialisent les colonnes de ligne de base de données par nom. Les premières sont donc plus performantes, mais les dernières offrent une meilleure fiabilité, d'où leur utilisation pour les requêtes SQL arbitraires.
 
-Anyway, after jumping through all of the hoops above we can finally implement a function to fetch board summaries:
+Quoi qu'il en soit, après avoir franchi toutes les étapes ci-dessus, nous pouvons enfin implémenter une fonction pour récupérer les résumés des tableaux :
 
 ```rust
 // fetching summary of cards on a board by id
